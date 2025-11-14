@@ -3,6 +3,9 @@ import torch
 from PIL import Image
 from pathlib import Path
 import sys
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -86,7 +89,7 @@ def main():
             with col1:
                 st.subheader("Input Image")
                 image = Image.open(uploaded_file).convert('RGB')
-                st.image(image, use_column_width=True, caption=uploaded_file.name)
+                st.image(image, use_container_width=True, caption=uploaded_file.name)
                 st.text(f"Size: {image.size[0]}×{image.size[1]} px")
 
             with col2:
@@ -133,7 +136,7 @@ def main():
             img_path = images_available[idx]
             with cols[idx % 3]:
                 sample_img = Image.open(img_path).convert('RGB')
-                st.image(sample_img, use_column_width=True, caption=img_path.name)
+                st.image(sample_img, use_container_width=True, caption=img_path.name)
                 with st.spinner("..."):
                     sample_results = predict_image(model, sample_img, classes, img_size, device, topk=1)
                     pred_class, pred_prob = sample_results[0]
