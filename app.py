@@ -4,16 +4,118 @@ from PIL import Image
 from pathlib import Path
 import sys
 import os
-import requests   
+import requests
+import zipfile
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""  
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Force CPU
 
+# Ensure relative imports work
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.model import build_model
 from src.data import get_transforms
 
 
+# ----------------------------
+# Utilities: download helpers
+# ----------------------------
+def download_file(url: str, dest_path: Path, chunk_size: int = 1_048_576):
+    """Download a file to dest_path if it does not already exist."""
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    if dest_path.exists():
+        return True
+    try:
+        with requests.get(url, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with open(dest_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        f.write(chunk)
+        return True
+    except Exception as e:
+        st.error(f"❌ Download failed for {url}: {e}")
+        return False
+
+
+def ensure_checkpoints():
+    """Ensure all required checkpoints exist by downloading them from the GitHub Release."""
+    checkpoint_dir = Path("./checkpoints")
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    # List of checkpoint URLs to fetch (includes best and last_epoch_1..5)
+    checkpoint_urls = [
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/best.pth",
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/last_epoch_1.pth",
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/last_epoch_2.pth",
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/last_epoch_3.pth",
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/last_epoch_4.pth",
+        "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/last_epoch_5.pth",
+    ]
+
+    # Try to download missing checkpoints
+    missing = []
+    for url in checkpoint_urls:
+        filename = url.split("/")[-1]
+        dest = checkpoint_dir / filename
+        if not dest.exists():
+            missing.append((url, dest))
+
+    if missing:
+        with st.spinner("Downloading model checkpoints from GitHub Release..."):
+            for url, dest in missing:
+                ok = download_file(url, dest)
+                if not ok:
+                    # If any required download fails, we still continue to let the app run with what it has
+                    st.warning(f"⚠️ Could not download {dest.name}. If it doesn't appear in the selector, check your release link or network.")
+
+
+def ensure_sample_images():
+    """
+    Ensure data/processed/val exists with sample images by downloading and extracting
+    a ZIP from the GitHub Release. Keep the repo lightweight by not committing data.
+    """
+    val_dir = Path("./data/processed/val")
+    if val_dir.exists() and any(val_dir.iterdir()):
+        # Already prepared
+        return
+
+    # Streamlit-friendly message
+    st.warning("Sample images not found locally. Downloading from GitHub Release...")
+
+    # IMPORTANT: Upload sample_images.zip to your Release with this structure:
+    # sample_images/
+    # ├─ Tomato_healthy/ tomato1.jpg
+    # ├─ Potato___Late_blight/ potato1.jpg
+    # └─ Pepper__bell___Bacterial_spot/ pepper1.jpg
+    #
+    # Then use the direct download URL:
+    sample_zip_url = "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/sample_images.zip"
+
+    # Paths
+    tmp_zip = Path("./sample_images.zip")
+    target_root = Path("./data/processed")  # ZIP should extract into this folder, creating 'val' inside
+
+    # Download ZIP
+    ok = download_file(sample_zip_url, tmp_zip)
+    if not ok:
+        st.error("❌ Failed to download sample_images.zip. Ensure it exists in your GitHub Release.")
+        return
+
+    # Extract ZIP
+    try:
+        target_root.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(tmp_zip, "r") as zf:
+            zf.extractall(target_root)
+        # Clean up the zip file
+        tmp_zip.unlink(missing_ok=True)
+        st.success("✅ Sample images downloaded and extracted.")
+    except Exception as e:
+        st.error(f"❌ Failed to extract sample images: {e}")
+
+
+# ----------------------------
+# Model loading and prediction
+# ----------------------------
 @st.cache_resource
 def load_checkpoint(checkpoint_path):
     device = torch.device('cpu')
@@ -46,6 +148,9 @@ def predict_image(model, image_pil, classes, img_size, device, topk=5):
     return results
 
 
+# ----------------------------
+# App
+# ----------------------------
 def main():
     st.set_page_config(page_title="🌿 Leaf Disease Detection", page_icon="🌿", layout="wide")
     st.title("🌿 Leaf Disease Detection")
@@ -54,33 +159,25 @@ def main():
 
     st.sidebar.header("⚙️ Configuration")
 
-    
+    # Ensure checkpoints and sample images are present (works locally and on Streamlit Cloud)
+    ensure_checkpoints()
+    ensure_sample_images()
+
+    # Collect available checkpoints
     checkpoint_dir = Path("./checkpoints")
-    checkpoint_dir.mkdir(exist_ok=True)
-
-    best_ckpt_path = checkpoint_dir / "best.pth"
-    if not best_ckpt_path.exists():
-        st.warning("Downloading model checkpoint from GitHub Release...")
-        url = "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/best.pth"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            with open(best_ckpt_path, "wb") as f:
-                f.write(response.content)
-            st.success("✅ Model checkpoint downloaded successfully.")
-        except Exception as e:
-            st.error(f"❌ Failed to download checkpoint: {e}")
-            return
-
     checkpoints = sorted(checkpoint_dir.glob("*.pth"))
 
     if not checkpoints:
-        st.error("❌ No checkpoints found in `./checkpoints/` folder. Train a model first!")
-        st.info("Run: `python .\\run_train.py --data-dir .\\data\\processed --epochs 10 --model-name custom_cnn`")
+        st.error("❌ No checkpoints found in `./checkpoints/`. Upload to GitHub Releases or train a model.")
+        st.info("Train locally: `python .\\run_train.py --data-dir .\\data\\processed --epochs 10 --model-name custom_cnn`")
         return
 
     checkpoint_names = {str(ckpt): ckpt.name for ckpt in checkpoints}
-    selected_ckpt = st.sidebar.selectbox("Select Checkpoint", options=list(checkpoint_names.keys()), format_func=lambda x: checkpoint_names[x])
+    selected_ckpt = st.sidebar.selectbox(
+        "Select Checkpoint",
+        options=list(checkpoint_names.keys()),
+        format_func=lambda x: checkpoint_names[x]
+    )
     topk = st.sidebar.slider("Top-K Predictions", min_value=1, max_value=10, value=5)
     st.sidebar.markdown("---")
     st.sidebar.markdown("**About**: This app uses a CNN trained on the PlantVillage dataset to classify plant diseases.")
@@ -98,9 +195,16 @@ def main():
 
     tab1, tab2, tab3 = st.tabs(["📤 Upload Image", "🎨 Sample Images", "📊 Class Info"])
 
+    # ----------------------------
+    # Tab 1: Upload Image
+    # ----------------------------
     with tab1:
         st.subheader("Upload a Leaf Image")
-        uploaded_file = st.file_uploader("Choose an image (JPG, PNG)", type=["jpg", "jpeg", "png"], help="Upload a clear image of a plant leaf for disease detection")
+        uploaded_file = st.file_uploader(
+            "Choose an image (JPG, PNG)",
+            type=["jpg", "jpeg", "png"],
+            help="Upload a clear image of a plant leaf for disease detection"
+        )
 
         if uploaded_file is not None:
             col1, col2 = st.columns([1, 1])
@@ -130,15 +234,22 @@ def main():
                 st.markdown("---")
                 st.success(f"🎯 **Predicted Disease**: {top_disease} ({top_prob*100:.1f}%)")
 
+    # ----------------------------
+    # Tab 2: Sample Images
+    # ----------------------------
     with tab2:
         st.subheader("Sample Images from Dataset")
         data_dir = Path("./data/processed/val")
 
         if not data_dir.exists():
-            st.warning("No validation data found. Prepare the dataset first.")
+            st.warning("No validation data found. Attempted to download sample images but folder is missing.")
             return
 
         classes_available = [d.name for d in data_dir.iterdir() if d.is_dir()]
+        if not classes_available:
+            st.info("No class folders found in sample images.")
+            return
+
         selected_class = st.selectbox("Select a class to view samples", classes_available)
 
         class_dir = data_dir / selected_class
@@ -161,6 +272,9 @@ def main():
                     pred_class, pred_prob = sample_results[0]
                     st.caption(f"🤔 Predicted: {pred_class}\n({pred_prob*100:.0f}%)")
 
+    # ----------------------------
+    # Tab 3: Class Info (from checkpoint)
+    # ----------------------------
     with tab3:
         st.subheader("Disease Classes in Dataset")
         st.info(f"Total classes: **{len(classes)}**")
