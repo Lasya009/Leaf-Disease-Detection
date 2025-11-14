@@ -1,6 +1,3 @@
-"""Smoke test: build the custom CNN and run a forward pass with random input.
-This doesn't require dataset files and is fast to run.
-"""
 import torch
 
 from src.model import build_model

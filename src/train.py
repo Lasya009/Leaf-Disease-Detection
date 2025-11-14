@@ -1,10 +1,3 @@
-"""
-Training script for leaf disease detection.
-
-Example (PowerShell):
-python .\src\train.py --data-dir .\data\processed --epochs 10 --batch-size 32 --output-dir .\checkpoints --model-name custom_cnn
-
-"""
 import argparse
 import os
 from pathlib import Path
@@ -51,8 +44,7 @@ def train(args):
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-    
-    # Setup scheduler
+
     scheduler = None
     if args.scheduler == 'step':
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
@@ -63,7 +55,6 @@ def train(args):
     start_epoch = 1
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # Resume from checkpoint
     if args.resume:
         ckpt_path = Path(args.resume)
         if ckpt_path.exists():
@@ -99,13 +90,11 @@ def train(args):
         val_loss, val_acc = evaluate(model, val_loader, device)
         print(f"Epoch {epoch}: train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_acc={val_acc:.4f}")
 
-        # Step scheduler
         if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
             scheduler.step(val_loss)
         elif scheduler is not None:
             scheduler.step()
 
-        # Save checkpoint
         ckpt = {
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
@@ -121,7 +110,6 @@ def train(args):
         last_path = Path(args.output_dir) / f'last_epoch_{epoch}.pth'
         torch.save(ckpt, last_path)
 
-        # Save best
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_path = Path(args.output_dir) / 'best.pth'
@@ -144,7 +132,6 @@ def parse_args():
     parser.add_argument('--scheduler', type=str, default=None, help='step | reduce_on_plateau')
     parser.add_argument('--step-size', type=int, default=5, help='LR scheduler step size (for step scheduler)')
     parser.add_argument('--gamma', type=float, default=0.1, help='LR decay factor')
-    return parser.parse_args()
     return parser.parse_args()
 
 

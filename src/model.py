@@ -1,18 +1,9 @@
-"""
-Model builder: simple transfer learning using torchvision.models.
-"""
 from torchvision import models
 import torch.nn as nn
 import torch
 
 
 class CustomCNN(nn.Module):
-    """A small convolutional network suitable as a simple CNN baseline.
-
-    Architecture: (Conv -> BN -> ReLU -> Pool) x3 -> AdaptiveAvgPool -> FC
-    Small and fast to run on CPU/GPU for sanity checks and experiments.
-    """
-
     def __init__(self, num_classes: int, in_channels: int = 3):
         super().__init__()
         self.features = nn.Sequential(
@@ -47,11 +38,6 @@ class CustomCNN(nn.Module):
 
 
 def build_model(num_classes, model_name='resnet18', pretrained=True):
-    """Return a model by name. Supports 'custom_cnn', 'resnet18' and 'resnet50'.
-
-    custom_cnn: small model trained from scratch (good for CPU / quick experiments)
-    resnet*: torchvision pretrained ResNet transfer-learning
-    """
     if model_name == 'custom_cnn':
         return CustomCNN(num_classes=num_classes)
 

@@ -1,6 +1,3 @@
-"""
-PyTorch Dataset and DataLoader helpers for PlantVillage-structured folders.
-"""
 from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -18,7 +15,6 @@ class SimpleImageFolderDataset(Dataset):
             with open(classes_file, 'r', encoding='utf-8') as f:
                 self.classes = [l.strip() for l in f if l.strip()]
         else:
-            # infer classes from folders
             self.classes = sorted([p.name for p in self.root_dir.iterdir() if p.is_dir()])
 
         self.class_to_idx = {c: i for i, c in enumerate(self.classes)}

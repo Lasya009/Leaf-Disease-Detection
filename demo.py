@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-"""Quick demo: train for 1 batch, save checkpoint, and run inference."""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,9 +11,7 @@ import torch.optim as optim
 def demo():
     device = torch.device('cpu')
     print('Loading data...')
-    train_loader, val_loader, classes = make_dataloaders(
-        './data/processed', batch_size=8, img_size=224, num_workers=0
-    )
+    train_loader, val_loader, classes = make_dataloaders('./data/processed', batch_size=8, img_size=224, num_workers=0)
     num_classes = len(classes)
     print(f'Classes: {num_classes}, Sample classes: {classes[:3]}')
 
@@ -37,16 +33,11 @@ def demo():
         loss.backward()
         optimizer.step()
         print(f'Batch loss: {loss.item():.4f}')
-        break  # just 1 batch
+        break
 
     print('Saving checkpoint...')
     os.makedirs('./checkpoints', exist_ok=True)
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'classes': classes,
-        'model_name': 'custom_cnn',
-        'img_size': 224,
-    }, './checkpoints/best.pth')
+    torch.save({'model_state_dict': model.state_dict(), 'classes': classes, 'model_name': 'custom_cnn', 'img_size': 224}, './checkpoints/best.pth')
     print('✓ Checkpoint saved to ./checkpoints/best.pth')
 
     print('Running inference on first validation image...')

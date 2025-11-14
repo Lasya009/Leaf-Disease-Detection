@@ -1,10 +1,3 @@
-"""
-Single-image inference script.
-
-Example:
-python .\src\infer.py --checkpoint .\checkpoints\best.pth --image .\samples\leaf.jpg
-
-"""
 import argparse
 from pathlib import Path
 

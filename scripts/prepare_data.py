@@ -1,7 +1,3 @@
-"""
-Prepare PlantVillage dataset into train/val/test folders.
-Assumes `data_dir` contains many class subfolders, each containing images.
-"""
 import argparse
 import os
 import random
@@ -49,23 +45,18 @@ def prepare(data_dir, out_dir, val_split=0.15, test_split=0.1, seed=42):
             target_dir = out_dir / subset_name / cls.name
             target_dir.mkdir(parents=True, exist_ok=True)
             for p in subset:
-                # copy rather than move so original dataset remains
-                # if link mode is enabled, create a hard link to save space
                 try:
                     if prepare._use_links:
-                        # create hard link; if target exists, skip
                         tgt = target_dir / p.name
                         if not tgt.exists():
                             os.link(p, tgt)
                     else:
                         shutil.copy2(p, target_dir / p.name)
                 except Exception:
-                    # fallback to copy on any error (permissions, cross-device, etc.)
                     shutil.copy2(p, target_dir / p.name)
 
         mapping.append(cls.name)
 
-    # write class mapping
     with open(out_dir / 'classes.txt', 'w', encoding='utf-8') as f:
         for c in sorted(mapping):
             f.write(f"{c}\n")
@@ -82,6 +73,5 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--link', action='store_true', help='Create hard links instead of copying files (saves space on NTFS)')
     args = parser.parse_args()
-    # store link preference on the function to avoid changing signature
     prepare._use_links = bool(args.link)
     prepare(args.data_dir, args.out_dir, args.val_split, args.test_split, args.seed)

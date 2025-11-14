@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-"""Simple wrapper to run training with correct imports."""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
