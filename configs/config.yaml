@@ -1,0 +1,14 @@
+# default config
+train:
+  epochs: 10
+  batch_size: 32
+  lr: 1e-3
+  num_workers: 4
+  img_size: 224
+  seed: 42
+  pretrained: true
+  model_name: resnet18
+data:
+  val_split: 0.15
+  test_split: 0.1
+  seed: 42

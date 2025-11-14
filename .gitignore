@@ -1,12 +1,58 @@
+# -------------------------
 # Python
-.venv/
-__pycache__/
-*.pyc
+# -------------------------
+# Virtual environments
+.venv*/
+venv*/
+ENV*/
 
-# data
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Unit test / coverage reports
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# -------------------------
+# Streamlit / App Data
+# -------------------------
+# Streamlit cache
+.streamlit/
+
+# Local data folders (customize as needed)
+data/
 data/processed/
 checkpoints/
 
-# OS
-Thumbs.db
+# -------------------------
+# Logs
+# -------------------------
+*.log
+
+# -------------------------
+# OS / Editor files
+# -------------------------
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
