@@ -4,6 +4,7 @@ from PIL import Image
 from pathlib import Path
 import sys
 import os
+import requests   
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  
 
@@ -52,12 +53,30 @@ def main():
     st.markdown("---")
 
     st.sidebar.header("⚙️ Configuration")
+
+    
     checkpoint_dir = Path("./checkpoints")
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    best_ckpt_path = checkpoint_dir / "best.pth"
+    if not best_ckpt_path.exists():
+        st.warning("Downloading model checkpoint from GitHub Release...")
+        url = "https://github.com/Lasya009/Leaf-Disease-Detection/releases/download/v1.0/best.pth"
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            with open(best_ckpt_path, "wb") as f:
+                f.write(response.content)
+            st.success("✅ Model checkpoint downloaded successfully.")
+        except Exception as e:
+            st.error(f"❌ Failed to download checkpoint: {e}")
+            return
+
     checkpoints = sorted(checkpoint_dir.glob("*.pth"))
 
     if not checkpoints:
         st.error("❌ No checkpoints found in `./checkpoints/` folder. Train a model first!")
-        st.info("Run: `python .\run_train.py --data-dir .\data\processed --epochs 10 --model-name custom_cnn`")
+        st.info("Run: `python .\\run_train.py --data-dir .\\data\\processed --epochs 10 --model-name custom_cnn`")
         return
 
     checkpoint_names = {str(ckpt): ckpt.name for ckpt in checkpoints}
